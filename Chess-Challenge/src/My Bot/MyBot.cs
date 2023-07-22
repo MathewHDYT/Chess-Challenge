@@ -6,18 +6,17 @@ using System.Collections.Generic;
 
 public class MyBot : IChessBot
 {
-    private int [] pieceValues = {
-        0,      // Null
-        100,    // Pawn
-        325,    // Knight
-        325,    // Bishop
-        500,    // Rook
-        975,    // Queem
-        10000   // King
-    };
-
     public Move Think(Board board, Timer timer)
     {
+        int [] pieceValues = {
+            0,      // Null
+            100,    // Pawn
+            325,    // Knight
+            325,    // Bishop
+            500,    // Rook
+            975,    // Queem
+            10000   // King
+        };
         Move[] allMoves = board.GetLegalMoves();
 
         // Pick a random move to play if nothing better is found
@@ -27,29 +26,34 @@ public class MyBot : IChessBot
 
         foreach (Move move in allMoves)
         {
-            // Check wheter the current move would result in a checkmate or not
             board.MakeMove(move);
             bool isMate = board.IsInCheckmate();
             board.UndoMove(move);
 
-            // Always play checkmate in one
+            // Use the current move if it would result in a mate, even if another move would result in a higher value
             if (isMate)
             {
                 moveToPlay = move;
                 break;
             }
 
-            // Find highest value capture
+            // Check if the move would expose the attacking piece to a possible capture,
+            // capturing a rook with a queen is not worth it even if it might be the best possible legal move
+            bool targetProtected = board.SquareIsAttackedByOpponent(move.TargetSquare);
+            // Gets the value of the piece we are currently evaluating
             int currentPieceValue = pieceValues[(int)move.MovePieceType];
+            // Value of the piece the current move could capture
             int capturedPieceValue = pieceValues[(int)move.CapturePieceType];
 
+            // Value of a promotion is the difference between the previous piece and the changed piece
             int promotionPieceValue = 0;
             if (move.IsPromotion) {
                 promotionPieceValue = pieceValues[(int)move.PromotionPieceType] - currentPieceValue;
             }
 
+            // Subtract points if the piece can be captured if the move is executed
             int lossOnCapture = 0;
-            if (move.IsEnPassant) {
+            if (move.IsEnPassant || targetProtected) {
                 lossOnCapture = currentPieceValue;
             }
 
