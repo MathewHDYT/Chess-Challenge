@@ -22,7 +22,7 @@ public class MyBot : IChessBot
         // Pick a random move to play if nothing better is found
         Random rng = new();
         Move moveToPlay = allMoves[rng.Next(allMoves.Length)];
-        int highestValueCapture = 0;
+        int highestValueMove = 0;
 
         foreach (Move move in allMoves)
         {
@@ -40,6 +40,9 @@ public class MyBot : IChessBot
             // Check if the move would expose the attacking piece to a possible capture,
             // capturing a rook with a queen is not worth it even if it might be the best possible legal move
             bool targetProtected = board.SquareIsAttackedByOpponent(move.TargetSquare);
+            // Check if the move is currently exposed to another piece attacking it, if it is moving out of the way
+            // gives an additional advantage, because it can't be captured
+            bool pieceCaptured = board.SquareIsAttackedByOpponent(move.StartSquare);
             // Gets the value of the piece we are currently evaluating
             int currentPieceValue = pieceValues[(int)move.MovePieceType];
             // Value of the piece the current move could capture
@@ -48,21 +51,25 @@ public class MyBot : IChessBot
             // Value of a promotion is the difference between the previous piece and the changed piece
             int promotionPieceValue = 0;
             if (move.IsPromotion) {
-                promotionPieceValue = pieceValues[(int)move.PromotionPieceType] - currentPieceValue;
+                promotionPieceValue += pieceValues[(int)move.PromotionPieceType] - currentPieceValue;
             }
 
-            // Subtract points if the piece can be captured if the move is executed
+            // Subtract points if the piece can be captured if the move is executed or add points if it canb e captured if it is not moved
             int lossOnCapture = 0;
             if (move.IsEnPassant || targetProtected) {
-                lossOnCapture = currentPieceValue;
+                lossOnCapture += currentPieceValue;
+            }
+            if (pieceCaptured)
+            {
+                lossOnCapture -= currentPieceValue;
             }
 
             int totalMoveValue = capturedPieceValue + promotionPieceValue - lossOnCapture;
 
-            if (totalMoveValue > highestValueCapture)
+            if (totalMoveValue > highestValueMove)
             {
                 moveToPlay = move;
-                highestValueCapture = totalMoveValue;
+                highestValueMove = totalMoveValue;
             }
         }
         return moveToPlay;
